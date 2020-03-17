@@ -1,0 +1,95 @@
+DragonDOS additional info from Dragon Data Dragon Dos 2.C source code listing
+
+*******************************************************************************
+
+File management system for the Dragon.
+
+The micro works, last revised September 14th 1983.
+
+Assumptions: 5" drives, single or double sided, 40 or 80 tracks.
+
+These routines are designed to be called by the basic interpreter but are 
+not part of it. They may easily be called by any machine language program.
+
+Responsibilities of the basic interpreter include:
+	Reserve 1.5K at $0600
+	Call ResetVector (INITVR) on reset
+	Call CLOSAL at "OK"
+	
+*******************************************************************************
+Note:
+
+FSN	= First sector number
+LSN = logical sector number
+	
+*******************************************************************************
+
+Directory track format:
+	Sector 1
+		Bytes 0-179 	Free info (Bit=1 -> sector free)
+		Byte 252 ($FC)	Number of tracks
+		Byte 253 ($FD)	Number of sectors per side
+		Byte 254 ($FE)	Compliment of Number of tracks	
+		Byte 253 ($FF)	Compliment of Number of sectors per side
+		
+*******************************************************************************
+
+Directory entry format (FIB, normal block):
+	Offset	Length 	Purpose
+    0		1		Various flags (see below)
+    1		8		Filename in ascii, space padded
+    10		3		Extension in ascii, spaced padded
+    13 		4*3		four Extent records, see below for format
+    24		1		Bytes used in last sector or link to next block of extents.
+
+Directory entry format (extent block):
+	Offset	Length	Purpose
+    0		1		Various flags (see below)
+	11		7*3 	extent blocks
+	22		2		not used
+	24		1		Bytes used in last sector or link to next block of extents.
+
+Format of an extent block:
+   	Offset	Length 	Purpose
+   	0		2		Logical sector number,
+					This number DIV Sectors/Track to get start track,
+					This number MOD sectors/Track to get start sector
+	2		1		Number of sectors used in this block.
+
+
+Format of flags byte :
+
+Bit		Purpose
+0		Sector uint, 	0=filename, 1=extension
+1		Protected, 		0=unprotected, 1=protected
+2		unused
+3		End of dir		0=not end, 1=end
+4		unused
+5		more extents	0=none, 1=more extents
+6		unused
+7		Not valid		0=valid, 1=not valid (deleted)
+
+Note: only bits 1 and 7 are meaningful in a FIB
+
+Unused directory entries have the bytes used / link byte set to zero. 
+The directory and alternate directory tracks are not counted into the LSN.
+
+*******************************************************************************
+
+File info block format (in memory)
+
+Pos		Len		Use
+0		8		File name
+8		3		Extension
+11		1		Drive no (1..4)
+12		3		Next read byte
+15		1		Directory flags
+16		3		Length of file
+19		2		First sector number (FSN) of extent 1
+21		2		LSN of extent 1
+23		1		sextors in extent 1
+24		2		First sector number (FSN) of extent 1
+26		2		LSN of extent 1
+28		1		sectors in extent 1
+29		1		Number of dir entry
+30		1		Directory number of last entry
